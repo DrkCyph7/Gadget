@@ -1,0 +1,73 @@
+name: gadgetzilla
+description: "GadgetZilla."
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+
+  # Shared preferences package for storing user preferences
+  shared_preferences_android: ^2.4.10
+  shared_preferences: 2.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^5.0.0
+
+  # Add mockito for mocking dependencies in tests
+  mockito: ^5.4.6
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Splash screen Images
+    - assets/Element.png
+    - assets/GadgetZilla Logo.png
+    - assets/Component.png
+
+    # Onboarding Screen Images
+    - assets/Element 1.png
+    - assets/Onboard Logo.png
+
+    # Signup Screen Images
+    - assets/google_icon.png
+    - assets/facebook_icon.png
+
+    # Login Screen Images
+    - assets/Check-duotone.png
+
+    # Custom text field images
+    - assets/WarningCircle.png
+    - assets/Check.png
+
+  # Home Screen images
+    - assets/Home.png
+    - assets/home_filled.png
+    - assets/Bell.png
+    - assets/Filter.png
+    - assets/Floating.png
+    - assets/User.png
+    - assets/User_filled.png
+    - assets/Search.png
+    - assets/Heart.png
+    - assets/Heart_filled.png
+    - assets/Search_duotone.png
+    - assets/Heart_duotone.png
