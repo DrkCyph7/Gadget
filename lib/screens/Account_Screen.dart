@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'Login_Screen.dart';
+import 'profile_screen.dart';
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
@@ -6,66 +9,56 @@ class AccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Account',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: Colors.white,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 60),
+            const Center(
+              child: Text(
+                'Account',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
             const SizedBox(height: 24),
-            _buildAccountOption('My Listings', Icons.list_alt),
-            _buildAccountOption('My Details', Icons.person_outline),
-            _buildAccountOption('Notifications', Icons.notifications_outlined),
-            _buildAccountOption('FAQs', Icons.help_outline),
-            _buildAccountOption('Help Center', Icons.contact_support_outlined),
-            _buildAccountOption('Logout', Icons.logout, isLogout: true),
+            _buildAccountOption(context, 'My Listings', Icons.list_alt),
+            _buildAccountOption(
+              context,
+              'My Details',
+              Icons.person_outline,
+              goToProfile: true,
+            ),
+            _buildAccountOption(
+              context,
+              'Notifications',
+              Icons.notifications_outlined,
+            ),
+            _buildAccountOption(context, 'FAQs', Icons.help_outline),
+            _buildAccountOption(
+              context,
+              'Help Center',
+              Icons.contact_support_outlined,
+            ),
+            _buildAccountOption(
+              context,
+              'Logout',
+              Icons.logout,
+              isLogout: true,
+            ),
           ],
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Image.asset('assets/home.png', width: 24),
-                onPressed: () {
-                  Navigator.popUntil(context, (route) => route.isFirst);
-                },
-              ),
-              IconButton(
-                icon: Image.asset('assets/search.png', width: 24),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: Image.asset('assets/heart.png', width: 24),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/saved');
-                },
-              ),
-              IconButton(
-                icon: Image.asset('assets/profile_filled.png', width: 24),
-                onPressed: () {},
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 
   Widget _buildAccountOption(
+    BuildContext context,
     String title,
     IconData icon, {
     bool isLogout = false,
+    bool goToProfile = false,
   }) {
     return Column(
       children: [
@@ -79,8 +72,19 @@ class AccountScreen extends StatelessWidget {
             ),
           ),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            // Handle option tap
+          onTap: () async {
+            if (isLogout) {
+              await FirebaseAuth.instance.signOut();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                (Route<dynamic> route) => false,
+              );
+            } else if (goToProfile) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            }
           },
         ),
         const Divider(height: 1, thickness: 1),

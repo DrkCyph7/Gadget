@@ -1,346 +1,242 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher_string.dart'; // <-- Updated
 
-class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
-
-  @override
-  State<AddProductScreen> createState() => _AddProductScreenState();
-}
-
-class _AddProductScreenState extends State<AddProductScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _urlController = TextEditingController();
-  String _selectedCategory = 'Tshirts';
-  String? _imagePath;
-
-  final List<String> _categories = ['Tshirts', 'Jeans', 'Shoes', 'Other'];
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _urlController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    // Simulate image picking
-    setState(() {
-      _imagePath = 'assets/placeholder_product.png';
-    });
-  }
-
-  void _submitProduct() {
-    if (_formKey.currentState!.validate() && _imagePath != null) {
-      final newProduct = {
-        'name': _titleController.text,
-        'description': _descriptionController.text,
-        'image': _imagePath!,
-        'url': _urlController.text,
-        'category': _selectedCategory,
-        'isPublished': true,
-        'isSaved': false,
-      };
-      Navigator.pop(context, newProduct);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add New Listing'),
-        actions: [
-          TextButton(
-            onPressed: _submitProduct,
-            child: const Text('Publish', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child:
-                      _imagePath == null
-                          ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.add_a_photo, size: 48),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Add Product Image',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          )
-                          : ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              _imagePath!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                            ),
-                          ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Product Title',
-                  border: OutlineInputBorder(),
-                ),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Please enter a title'
-                            : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Please enter a description'
-                            : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'Product URL',
-                  border: OutlineInputBorder(),
-                ),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Please enter a URL'
-                            : null,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items:
-                    _categories.map((String category) {
-                      return DropdownMenuItem<String>(
-                        value: category,
-                        child: Text(category),
-                      );
-                    }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedCategory = newValue!;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitProduct,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.black,
-                  ),
-                  child: const Text(
-                    'Publish Listing',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Image.asset('assets/home.png', width: 24),
-                onPressed: () {
-                  Navigator.popUntil(context, (route) => route.isFirst);
-                },
-              ),
-              IconButton(
-                icon: Image.asset('assets/search.png', width: 24),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 40), // Space for FAB
-              IconButton(
-                icon: Image.asset('assets/heart.png', width: 24),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/saved');
-                },
-              ),
-              IconButton(
-                icon: Image.asset('assets/profile.png', width: 24),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/account');
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+import 'add_product_screen.dart';
 
 class MyListingsScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> products;
-
-  const MyListingsScreen({super.key, required this.products});
+  const MyListingsScreen({super.key});
 
   @override
   State<MyListingsScreen> createState() => _MyListingsScreenState();
 }
 
 class _MyListingsScreenState extends State<MyListingsScreen> {
-  @override
-  Widget build(BuildContext context) {
-    final myProducts =
-        widget.products.where((p) => p['isPublished'] == true).toList();
+  final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Listings')),
-      body:
-          myProducts.isEmpty
-              ? const Center(child: Text('You have no published listings'))
-              : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: myProducts.length,
-                itemBuilder: (context, index) {
-                  final product = myProducts[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  product['name'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              Switch(
-                                value: product['isPublished'],
-                                onChanged: (value) {
-                                  setState(() {
-                                    product['isPublished'] = value;
-                                  });
-                                },
-                              ),
-                              Text(
-                                product['isPublished'] ? 'Published' : 'Paused',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.asset(
-                              product['image'],
-                              height: 120,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(product['description']),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Category: ${product['category']}',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              // TODO: Track Order
-                            },
-                            child: const Text('Track Order'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+  Future<void> _deleteProduct(String docId) async {
+    try {
+      await FirebaseFirestore.instance.collection('items').doc(docId).delete();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Product deleted')));
+    } catch (e) {
+      debugPrint('Error deleting product: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to delete product')));
+    }
+  }
+
+  void _showOptions(Map<String, dynamic> product) async {
+    final url = product['url'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.open_in_browser),
+                title: const Text('Open Product'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (url != null && await canLaunchUrlString(url)) {
+                    await launchUrlString(
+                      url,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to open URL')),
+                    );
+                  }
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text('Copy URL'),
+                onTap: () {
+                  if (url != null) {
+                    Clipboard.setData(ClipboardData(text: url));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('URL copied to clipboard')),
+                    );
+                  }
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share Product'),
+                onTap: () {
+                  if (url != null) {
+                    Share.share('Check this product: $url');
+                  }
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('My Listings')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream:
+            FirebaseFirestore.instance
+                .collection('items')
+                .where('ownerId', isEqualTo: user!.uid)
+                .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('You have no published listings'));
+          }
+
+          final products = snapshot.data!.docs;
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: products.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.75,
+            ),
+            itemBuilder: (context, index) {
+              final doc = products[index];
+              final product = doc.data() as Map<String, dynamic>;
+              final docId = doc.id;
+
+              return GestureDetector(
+                onTap: () => _showOptions(product),
+                child: ProductTile(
+                  product: product,
+                  onDelete: () => _deleteProduct(docId),
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AddProductScreen()),
+            MaterialPageRoute(builder: (context) => AddProductScreen()),
           );
         },
         backgroundColor: Colors.black,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: BottomAppBar(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+}
+
+class ProductTile extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final VoidCallback onDelete;
+
+  const ProductTile({super.key, required this.product, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = product['name'] ?? 'Unnamed';
+    final description = product['description'] ?? 'No description';
+    final category = product['category'] ?? 'Uncategorized';
+    final imageUrl = product['imageUrl'] as String?;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
             children: [
-              IconButton(
-                icon: Image.asset('assets/home.png', width: 24),
-                onPressed: () {
-                  Navigator.popUntil(context, (route) => route.isFirst);
-                },
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+                child:
+                    imageUrl != null
+                        ? Image.network(
+                          imageUrl,
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) => Container(
+                                height: 120,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.broken_image, size: 40),
+                              ),
+                        )
+                        : Container(
+                          height: 120,
+                          color: Colors.grey[300],
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported, size: 40),
+                          ),
+                        ),
               ),
-              IconButton(
-                icon: Image.asset('assets/search.png', width: 24),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 40),
-              IconButton(
-                icon: Image.asset('assets/heart.png', width: 24),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/saved');
-                },
-              ),
-              IconButton(
-                icon: Image.asset('assets/profile_filled.png', width: 24),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/account');
-                },
+              Positioned(
+                right: 4,
+                top: 4,
+                child: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: onDelete,
+                ),
               ),
             ],
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 12),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Category: $category',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

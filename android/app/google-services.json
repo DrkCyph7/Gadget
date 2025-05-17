@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "592571532803",
+    "project_id": "gadgetzilla-d534c",
+    "storage_bucket": "gadgetzilla-d534c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:592571532803:android:f97342cc720bf2100ff036",
+        "android_client_info": {
+          "package_name": "com.example.gadget"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "592571532803-glgia95g522udu9ardg0v8epds090g1s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.gadget",
+            "certificate_hash": "d2fa08df23213d5f6c7d364282623aedc8b3c41d"
+          }
+        },
+        {
+          "client_id": "592571532803-32s6nh6l0vf0allc68585coasudftqkd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTq57D5YXdnYiCNgQfxkXV7RoEmC6maBE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "592571532803-32s6nh6l0vf0allc68585coasudftqkd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,27 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gadgetzilla/screens/My_Listing_Screen.dart';
 import 'package:gadgetzilla/screens/Account_Screen.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GadgetZilla',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
+import 'package:gadgetzilla/screens/navbar.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,80 +19,95 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  bool _showFilter = false;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  StreamSubscription<QuerySnapshot>? _productSubscription;
 
-  final List<String> _categories = ['All', 'Tshirts', 'Jeans', 'Shoes'];
-
-  final List<Map<String, dynamic>> _products = [
-    {
-      'name': 'Regular Fit Slogan',
-      'image': 'assets/tshirt1.png',
-      'category': 'Tshirts',
-      'isSaved': false,
-      'isPublished': true,
-    },
-    {
-      'name': 'Regular Fit Polo',
-      'image': 'assets/tshirt2.png',
-      'category': 'Tshirts',
-      'isSaved': false,
-      'isPublished': true,
-    },
-    {
-      'name': 'Regular Fit Black',
-      'image': 'assets/tshirt3.png',
-      'category': 'Tshirts',
-      'isSaved': false,
-      'isPublished': true,
-    },
-    {
-      'name': 'Regular Fit V-Neck',
-      'image': 'assets/tshirt4.png',
-      'category': 'Tshirts',
-      'isSaved': false,
-      'isPublished': true,
-    },
-    {
-      'name': 'Slim Fit Jeans',
-      'image': 'assets/jeans1.png',
-      'category': 'Jeans',
-      'isSaved': false,
-      'isPublished': true,
-    },
-    {
-      'name': 'Running Shoes',
-      'image': 'assets/shoes1.png',
-      'category': 'Shoes',
-      'isSaved': false,
-      'isPublished': true,
-    },
+  final List<String> _categories = [
+    'All',
+    'Smart Tech',
+    'Mobile Accessories',
+    'Productivity Gadgets',
+    'Desk Essential',
+    'Kitchen & Life Hacks',
+    'Travel Outdoors',
+    'Trending & Viral',
   ];
 
+  List<Map<String, dynamic>> _allProducts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToProducts();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _productSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenToProducts() {
+    _productSubscription = FirebaseFirestore.instance
+        .collection('items')
+        .snapshots()
+        .listen((snapshot) {
+          setState(() {
+            _allProducts =
+                snapshot.docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return {
+                    'id': doc.id,
+                    'name': data['name'] ?? '',
+                    'description': data['description'] ?? '',
+                    'category': data['category'] ?? 'Other',
+                    'isSaved':
+                        _allProducts.firstWhere(
+                          (p) => p['id'] == doc.id,
+                          orElse: () => {'isSaved': false},
+                        )['isSaved'],
+                    'imageUrl': data['imageUrl'] ?? '',
+                    'url': data['url'] ?? '',
+                  };
+                }).toList();
+          });
+        });
+  }
+
   List<Map<String, dynamic>> get _filteredProducts {
-    return _products.where((product) {
-      final matchesCategory =
-          _selectedCategory == 'All' ||
-          product['category'] == _selectedCategory;
+    return _allProducts.where((product) {
       final matchesSearch =
           _searchQuery.isEmpty ||
           product['name'].toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+      final matchesCategory =
+          _selectedCategory == 'All' ||
+          product['category'] == _selectedCategory;
+      return matchesSearch && matchesCategory;
     }).toList();
   }
 
   List<Map<String, dynamic>> get _savedProducts {
-    return _products.where((product) => product['isSaved']).toList();
+    return _allProducts.where((product) => product['isSaved']).toList();
   }
 
-  void _toggleSaved(int index) {
+  void _toggleSaved(String productId) {
     setState(() {
-      _products[index]['isSaved'] = !_products[index]['isSaved'];
+      final index = _allProducts.indexWhere((p) => p['id'] == productId);
+      if (index != -1) {
+        _allProducts[index]['isSaved'] = !_allProducts[index]['isSaved'];
+      }
     });
   }
 
   void _onSearchChanged(String value) {
-    setState(() {
-      _searchQuery = value;
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _searchQuery = value;
+      });
     });
   }
 
@@ -123,13 +123,99 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildNavItem(IconData icon, IconData activeIcon, int index) {
-    return IconButton(
-      icon: Icon(
-        _currentIndex == index ? activeIcon : icon,
-        color: _currentIndex == index ? Colors.black : Colors.grey,
+  void _showOptions(Map<String, dynamic> product) async {
+    final url = product['url'] as String?;
+    final name = product['name'] ?? 'Unnamed';
+    final description = product['description'] ?? 'No description';
+    final category = product['category'] ?? 'Uncategorized';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      onPressed: () => _onTabTapped(index),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Category: $category',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+              const Divider(height: 30),
+              ListTile(
+                leading: const Icon(Icons.open_in_browser, color: Colors.black),
+                title: const Text('Open Product'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (url != null && await canLaunchUrlString(url)) {
+                    await launchUrlString(
+                      url,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to open URL')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy, color: Colors.black),
+                title: const Text('Copy URL'),
+                onTap: () {
+                  if (url != null) {
+                    Clipboard.setData(ClipboardData(text: url));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('URL copied to clipboard')),
+                    );
+                  }
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share, color: Colors.black),
+                title: const Text('Share Product'),
+                onTap: () {
+                  if (url != null) {
+                    Share.share('Check this product: $url');
+                  }
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -142,7 +228,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ? _buildHomeAppBar()
               : (_currentIndex == 1 || _currentIndex == 2
                   ? null
-                  : AppBar(title: const Text("Account"), centerTitle: true)),
+                  : AppBar(
+                    title: const Text("Account"),
+                    centerTitle: true,
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    foregroundColor: Colors.black,
+                  )),
       body: _buildCurrentScreen(),
       floatingActionButton:
           _currentIndex != 3
@@ -151,45 +243,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder:
-                          (context) => MyListingsScreen(products: _products),
+                      builder: (context) => const MyListingsScreen(),
                     ),
-                  ).then((_) {
-                    setState(() {});
-                  });
+                  );
                 },
                 backgroundColor: Colors.black,
                 child: const Icon(Icons.add, color: Colors.white),
               )
               : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildNavItem(Icons.home_outlined, Icons.home, 0),
-              _buildNavItem(Icons.search_outlined, Icons.search, 1),
-              const SizedBox(width: 40),
-              _buildNavItem(Icons.favorite_border, Icons.favorite, 2),
-              _buildNavItem(Icons.person_outline, Icons.person, 3),
-            ],
-          ),
-        ),
+      bottomNavigationBar: Navbar(
+        currentIndex: _currentIndex,
+        onTabSelected: _onTabTapped,
       ),
     );
   }
 
   PreferredSizeWidget _buildHomeAppBar() {
     return AppBar(
-      automaticallyImplyLeading: false,
+      backgroundColor: Colors.white,
+      elevation: 0,
       title: const Text(
         'Discover',
         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
       ),
+      foregroundColor: Colors.black,
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_none),
@@ -218,19 +296,46 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: [
         _buildSearchBar(),
-        _buildCategoryChips(),
+        if (_showFilter) _buildCategoryChips(),
         _buildProductGrid(_filteredProducts),
       ],
     );
   }
 
   Widget _buildSearchScreen() {
-    return Column(
-      children: [
-        _buildSearchBar(autofocus: true),
-        _buildCategoryChips(),
-        _buildProductGrid(_filteredProducts),
-      ],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            _buildSearchBar(autofocus: true),
+            if (_showFilter) _buildCategoryChips(),
+            Expanded(
+              child:
+                  _filteredProducts.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 100,
+                              color: Colors.grey[300],
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No results found',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      )
+                      : _buildProductGrid(_filteredProducts),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -254,10 +359,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: _searchController,
                 onChanged: _onSearchChanged,
                 autofocus: autofocus,
-                decoration: const InputDecoration(
-                  icon: Icon(Icons.search, color: Colors.grey),
-                  hintText: 'Search for clothes...',
+                decoration: InputDecoration(
+                  icon: const Icon(Icons.search, color: Colors.grey),
+                  hintText: 'Search items...',
                   border: InputBorder.none,
+                  suffixIcon:
+                      _searchQuery.isNotEmpty
+                          ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearchChanged('');
+                            },
+                          )
+                          : null,
                 ),
               ),
             ),
@@ -265,12 +380,19 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 10),
           Container(
             decoration: BoxDecoration(
-              color: Colors.black,
+              color: _showFilter ? Colors.black : Colors.grey[300],
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: const Icon(Icons.filter_list, color: Colors.white),
-              onPressed: () {},
+              icon: Icon(
+                Icons.filter_list,
+                color: _showFilter ? Colors.white : Colors.black,
+              ),
+              onPressed: () {
+                setState(() {
+                  _showFilter = !_showFilter;
+                });
+              },
             ),
           ),
         ],
@@ -330,63 +452,130 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Expanded(
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.8,
-        ),
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
-          return Stack(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          int crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: products.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.75,
+            ),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return GestureDetector(
+                onTap: () => _showOptions(product),
+                child: ProductTile(
+                  product: product,
+                  onToggleSaved: () => _toggleSaved(product['id']),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ProductTile extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final VoidCallback onToggleSaved;
+
+  const ProductTile({
+    super.key,
+    required this.product,
+    required this.onToggleSaved,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = product['name'] ?? 'Unnamed';
+    final description = product['description'] ?? '';
+    final category = product['category'] ?? 'Uncategorized';
+    final imageUrl = product['imageUrl'] as String?;
+    final isSaved = product['isSaved'] == true;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(product['image'], fit: BoxFit.cover),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product['name'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+                child:
+                    imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                          imageUrl,
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) => Container(
+                                height: 120,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.broken_image, size: 40),
+                              ),
+                        )
+                        : Container(
+                          height: 120,
+                          color: Colors.grey[300],
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported, size: 40),
+                          ),
+                        ),
               ),
               Positioned(
-                top: 8,
-                right: 8,
+                right: 4,
+                top: 4,
                 child: IconButton(
                   icon: Icon(
-                    product['isSaved'] ? Icons.favorite : Icons.favorite_border,
-                    color: product['isSaved'] ? Colors.red : Colors.black,
+                    isSaved ? Icons.favorite : Icons.favorite_border,
+                    color: isSaved ? Colors.red : Colors.black,
                   ),
-                  onPressed:
-                      () => _toggleSaved(
-                        _products.indexWhere(
-                          (p) => p['name'] == product['name'],
-                        ),
-                      ),
+                  onPressed: onToggleSaved,
                 ),
               ),
             ],
-          );
-        },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 12),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Category: $category',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -11,6 +11,18 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.17.3
+  google_sign_in: ^6.2.1
+  cloud_firestore: ^4.0.0
+  firebase_storage: ^11.0.0
+  image_picker: ^1.0.7
+  uuid: ^4.0.0
+  permission_handler: ^11.0.0
+  share_plus: ^7.2.1
+  url_launcher: ^6.2.5
+  url_launcher_android: ^6.2.5
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -59,7 +71,7 @@ flutter:
     - assets/Check.png
 
   # Home Screen images
-    - assets/Home.png
+    - assets/home.png
     - assets/home_filled.png
     - assets/Bell.png
     - assets/Filter.png
@@ -67,7 +79,7 @@ flutter:
     - assets/User.png
     - assets/User_filled.png
     - assets/Search.png
-    - assets/Heart.png
-    - assets/Heart_filled.png
+    - assets/heart.png
+    - assets/heart_filled.png
     - assets/Search_duotone.png
     - assets/Heart_duotone.png
