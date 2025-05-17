@@ -35,10 +35,10 @@ GadgetZilla is a Flutter mobile application that allows users to browse, search,
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/yourusername/gadgetzilla.git
-   cd gadgetzilla
+   git clone https://github.com/DrkCyph7/Gadget.git
+   cd Gadget
 
-	2.	Install dependencies:
+Install dependencies:
 
 flutter pub get
 
