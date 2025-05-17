@@ -38,8 +38,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -47,24 +45,23 @@ class _SplashScreenState extends State<SplashScreen> {
         children: [
           Image.asset('assets/Element.png', fit: BoxFit.cover),
           Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(flex: 3),
-              Image.asset(
-                'assets/GadgetZilla Logo.png',
-                height: 200,
-                width: 200,
-              ),
-              const Spacer(flex: 2),
-              // Positioned in the middle of bottom half
-              Padding(
-                padding: EdgeInsets.only(bottom: screenHeight * 0.25),
-                child: LoadingAnimationWidget.fourRotatingDots(
-                  color: Colors.white,
-                  size: 50,
+              const Spacer(flex: 4), // slightly less space above
+              Center(
+                child: Image.asset(
+                  'assets/GadgetZilla Logo.png',
+                  height: 200,
+                  width: 200,
                 ),
               ),
-              const Spacer(),
+              const Spacer(flex: 3), // slightly more space below logo
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: LoadingAnimationWidget.fourRotatingDots(
+                  color: Colors.white,
+                  size: 45,
+                ),
+              ),
             ],
           ),
         ],

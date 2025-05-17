@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _listenToProducts() {
     _productSubscription = FirebaseFirestore.instance
         .collection('items')
+        .where('publish', isEqualTo: true)
         .snapshots()
         .listen((snapshot) {
           setState(() {
@@ -131,91 +132,147 @@ class _HomeScreenState extends State<HomeScreen> {
     final name = product['name'] ?? 'Unnamed';
     final description = product['description'] ?? 'No description';
     final category = product['category'] ?? 'Uncategorized';
+    final imageUrl = product['imageUrl'] ?? '';
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       backgroundColor: Colors.white,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (imageUrl.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          imageUrl,
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (_, __, ___) => Container(
+                                height: 200,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(Icons.broken_image),
+                                ),
+                              ),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 200,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: Colors.grey.shade300,
+                        child: const Center(child: Icon(Icons.image)),
+                      ),
+                    const SizedBox(height: 16),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Category: $category',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                    const Divider(height: 30),
+                    ListTile(
+                      leading: const Icon(Icons.open_in_browser),
+                      title: const Text('Open Product'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (url != null && await canLaunchUrlString(url)) {
+                          await launchUrlString(
+                            url,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to open URL')),
+                          );
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.copy),
+                      title: const Text('Copy URL'),
+                      onTap: () {
+                        if (url != null) {
+                          Clipboard.setData(ClipboardData(text: url));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('URL copied to clipboard'),
+                            ),
+                          );
+                        }
+                        Navigator.pop(context);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.share),
+                      title: const Text('Share Product'),
+                      onTap: () {
+                        if (url != null) {
+                          Share.share('Check this product: $url');
+                        }
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                description,
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Category: $category',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-              const Divider(height: 30),
-              ListTile(
-                leading: const Icon(Icons.open_in_browser),
-                title: const Text('Open Product'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  if (url != null && await canLaunchUrlString(url)) {
-                    await launchUrlString(
-                      url,
-                      mode: LaunchMode.externalApplication,
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to open URL')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: const Text('Copy URL'),
-                onTap: () {
-                  if (url != null) {
-                    Clipboard.setData(ClipboardData(text: url));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('URL copied to clipboard')),
-                    );
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share),
-                title: const Text('Share Product'),
-                onTap: () {
-                  if (url != null) {
-                    Share.share('Check this product: $url');
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -451,10 +508,49 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildProductGrid(List<Map<String, dynamic>> products) {
     if (products.isEmpty) {
+      IconData icon;
+      String title;
+      String message;
+
+      if (_currentIndex == 1 && _searchQuery.isNotEmpty) {
+        // Search page empty state
+        icon = Icons.search_off;
+        title = 'No results found!';
+        message = 'Try a similar word or something more general.';
+      } else if (_currentIndex == 2) {
+        // Saved items empty state
+        icon = Icons.favorite_border;
+        title = 'No saved item';
+        message =
+            "You don't have any saved items.\nGo to Discover and add some.";
+      } else {
+        // Home or default fallback
+        icon = Icons.inventory_2_outlined;
+        title = 'No products found';
+        message = 'Try changing the filter or check back later.';
+      }
+
       return Center(
-        child: Text(
-          'No products found',
-          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey),
+            const SizedBox(height: 17),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
