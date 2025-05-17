@@ -7,6 +7,7 @@ import 'package:gadgetzilla/screens/navbar.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:gadgetzilla/screens/notification.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,19 +57,21 @@ class _HomeScreenState extends State<HomeScreen> {
         .snapshots()
         .listen((snapshot) {
           setState(() {
+            // Preserve old saved states if possible
+            final oldSavedMap = {
+              for (var p in _allProducts) p['id']: p['isSaved'] ?? false,
+            };
+
             _allProducts =
                 snapshot.docs.map((doc) {
                   final data = doc.data() as Map<String, dynamic>;
+                  final id = doc.id;
                   return {
-                    'id': doc.id,
+                    'id': id,
                     'name': data['name'] ?? '',
                     'description': data['description'] ?? '',
                     'category': data['category'] ?? 'Other',
-                    'isSaved':
-                        _allProducts.firstWhere(
-                          (p) => p['id'] == doc.id,
-                          orElse: () => {'isSaved': false},
-                        )['isSaved'],
+                    'isSaved': oldSavedMap[id] ?? false,
                     'imageUrl': data['imageUrl'] ?? '',
                     'url': data['url'] ?? '',
                   };
@@ -90,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Map<String, dynamic>> get _savedProducts {
-    return _allProducts.where((product) => product['isSaved']).toList();
+    return _allProducts.where((product) => product['isSaved'] == true).toList();
   }
 
   void _toggleSaved(String productId) {
@@ -172,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const Divider(height: 30),
               ListTile(
-                leading: const Icon(Icons.open_in_browser, color: Colors.black),
+                leading: const Icon(Icons.open_in_browser),
                 title: const Text('Open Product'),
                 onTap: () async {
                   Navigator.pop(context);
@@ -189,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.copy, color: Colors.black),
+                leading: const Icon(Icons.copy),
                 title: const Text('Copy URL'),
                 onTap: () {
                   if (url != null) {
@@ -202,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.share, color: Colors.black),
+                leading: const Icon(Icons.share),
                 title: const Text('Share Product'),
                 onTap: () {
                   if (url != null) {
@@ -211,7 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                 },
               ),
-              const SizedBox(height: 10),
             ],
           ),
         );
@@ -219,42 +221,74 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<bool> _onWillPop() async {
+    if (_currentIndex == 0) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Exit App?'),
+              content: const Text('Are you sure you want to exit?'),
+              actions: [
+                TextButton(
+                  child: const Text('No'),
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                TextButton(
+                  child: const Text('Yes'),
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+              ],
+            ),
+      );
+      return shouldExit ?? false;
+    } else {
+      setState(() {
+        _currentIndex = 0;
+      });
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar:
-          _currentIndex == 0
-              ? _buildHomeAppBar()
-              : (_currentIndex == 1 || _currentIndex == 2
-                  ? null
-                  : AppBar(
-                    title: const Text("Account"),
-                    centerTitle: true,
-                    backgroundColor: Colors.white,
-                    elevation: 0,
-                    foregroundColor: Colors.black,
-                  )),
-      body: _buildCurrentScreen(),
-      floatingActionButton:
-          _currentIndex != 3
-              ? FloatingActionButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyListingsScreen(),
-                    ),
-                  );
-                },
-                backgroundColor: Colors.black,
-                child: const Icon(Icons.add, color: Colors.white),
-              )
-              : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: Navbar(
-        currentIndex: _currentIndex,
-        onTabSelected: _onTabTapped,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar:
+            _currentIndex == 0
+                ? _buildHomeAppBar()
+                : (_currentIndex == 1 || _currentIndex == 2
+                    ? null
+                    : AppBar(
+                      title: const Text("Account"),
+                      centerTitle: true,
+                      backgroundColor: Colors.white,
+                      elevation: 0,
+                      foregroundColor: Colors.black,
+                    )),
+        body: _buildCurrentScreen(),
+        floatingActionButton:
+            _currentIndex != 3
+                ? FloatingActionButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyListingsScreen(),
+                      ),
+                    );
+                  },
+                  backgroundColor: Colors.black,
+                  child: const Icon(Icons.add, color: Colors.white),
+                )
+                : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: Navbar(
+          currentIndex: _currentIndex,
+          onTabSelected: _onTabTapped,
+        ),
       ),
     );
   }
@@ -271,7 +305,23 @@ class _HomeScreenState extends State<HomeScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_none),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const NotificationScreen(),
+                transitionsBuilder: (_, animation, __, child) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  );
+                },
+              ),
+            );
+          },
         ),
       ],
     );
@@ -288,142 +338,109 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return const AccountScreen();
       default:
-        return const SizedBox.shrink();
+        return _buildHomeScreen();
     }
   }
 
   Widget _buildHomeScreen() {
-    return Column(
-      children: [
-        _buildSearchBar(),
-        if (_showFilter) _buildCategoryChips(),
-        _buildProductGrid(_filteredProducts),
-      ],
+    return SafeArea(
+      child: Column(
+        children: [
+          _buildSearchBar(),
+          _buildCategoryFilter(),
+          Expanded(child: _buildProductGrid(_filteredProducts)),
+        ],
+      ),
     );
   }
 
   Widget _buildSearchScreen() {
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            _buildSearchBar(autofocus: true),
-            if (_showFilter) _buildCategoryChips(),
-            Expanded(
-              child:
-                  _filteredProducts.isEmpty
-                      ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 100,
-                              color: Colors.grey[300],
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'No results found',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ],
-                        ),
-                      )
-                      : _buildProductGrid(_filteredProducts),
-            ),
-          ],
-        ),
+    return SafeArea(
+      child: Column(
+        children: [
+          _buildSearchBar(),
+          _buildCategoryFilter(),
+          Expanded(child: _buildProductGrid(_filteredProducts)),
+        ],
       ),
     );
   }
 
   Widget _buildSavedScreen() {
-    return _buildProductGrid(_savedProducts, emptyMessage: 'No Saved Items!');
-  }
-
-  Widget _buildSearchBar({bool autofocus = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
+    return SafeArea(
+      child: Column(
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                autofocus: autofocus,
-                decoration: InputDecoration(
-                  icon: const Icon(Icons.search, color: Colors.grey),
-                  hintText: 'Search items...',
-                  border: InputBorder.none,
-                  suffixIcon:
-                      _searchQuery.isNotEmpty
-                          ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _onSearchChanged('');
-                            },
-                          )
-                          : null,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Saved Items',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  color: Colors.black87,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: _showFilter ? Colors.black : Colors.grey[300],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.filter_list,
-                color: _showFilter ? Colors.white : Colors.black,
-              ),
-              onPressed: () {
-                setState(() {
-                  _showFilter = !_showFilter;
-                });
-              },
-            ),
-          ),
+          Expanded(child: _buildProductGrid(_savedProducts)),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryChips() {
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        decoration: InputDecoration(
+          hintText: 'Search...',
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      _onSearchChanged('');
+                    },
+                  )
+                  : const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade200,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter() {
     return SizedBox(
-      height: 40,
+      height: 45,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           final category = _categories[index];
-          final isSelected = _selectedCategory == category;
-          return GestureDetector(
-            onTap: () => _onCategorySelected(category),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.black : Colors.grey[200],
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                category,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.w500,
-                ),
+          final isSelected = category == _selectedCategory;
+          return Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: ChoiceChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (_) => _onCategorySelected(category),
+              selectedColor: Colors.black,
+              backgroundColor: Colors.grey.shade300,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           );
@@ -432,151 +449,138 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProductGrid(
-    List<Map<String, dynamic>> products, {
-    String emptyMessage = 'No products found',
-  }) {
+  Widget _buildProductGrid(List<Map<String, dynamic>> products) {
     if (products.isEmpty) {
-      return Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.search_off, size: 100, color: Colors.grey[300]),
-              const SizedBox(height: 16),
-              Text(emptyMessage, style: const TextStyle(fontSize: 16)),
-            ],
-          ),
+      return Center(
+        child: Text(
+          'No products found',
+          style: TextStyle(color: Colors.grey[600], fontSize: 16),
         ),
       );
     }
 
-    return Expanded(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          int crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: products.length,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.75,
-            ),
-            itemBuilder: (context, index) {
-              final product = products[index];
-              return GestureDetector(
-                onTap: () => _showOptions(product),
-                child: ProductTile(
-                  product: product,
-                  onToggleSaved: () => _toggleSaved(product['id']),
-                ),
-              );
-            },
-          );
-        },
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: products.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.68,
       ),
-    );
-  }
-}
+      itemBuilder: (context, index) {
+        final product = products[index];
+        final id = product['id'] as String;
+        final name = product['name'] as String? ?? '';
+        final description = product['description'] as String? ?? '';
+        final category = product['category'] as String? ?? '';
+        final isSaved = product['isSaved'] as bool? ?? false;
+        final imageUrl = product['imageUrl'] as String? ?? '';
 
-class ProductTile extends StatelessWidget {
-  final Map<String, dynamic> product;
-  final VoidCallback onToggleSaved;
-
-  const ProductTile({
-    super.key,
-    required this.product,
-    required this.onToggleSaved,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final name = product['name'] ?? 'Unnamed';
-    final description = product['description'] ?? '';
-    final category = product['category'] ?? 'Uncategorized';
-    final imageUrl = product['imageUrl'] as String?;
-    final isSaved = product['isSaved'] == true;
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+        return GestureDetector(
+          onTap: () => _showOptions(product),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.shade300,
+                  blurRadius: 6,
+                  offset: const Offset(0, 4),
                 ),
-                child:
-                    imageUrl != null && imageUrl.isNotEmpty
-                        ? Image.network(
-                          imageUrl,
-                          height: 120,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) => Container(
-                                height: 120,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.broken_image, size: 40),
-                              ),
-                        )
-                        : Container(
-                          height: 120,
-                          color: Colors.grey[300],
-                          child: const Center(
-                            child: Icon(Icons.image_not_supported, size: 40),
-                          ),
-                        ),
-              ),
-              Positioned(
-                right: 4,
-                top: 4,
-                child: IconButton(
-                  icon: Icon(
-                    isSaved ? Icons.favorite : Icons.favorite_border,
-                    color: isSaved ? Colors.red : Colors.black,
-                  ),
-                  onPressed: onToggleSaved,
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                // Image section
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child:
+                      imageUrl.isNotEmpty
+                          ? Image.network(
+                            imageUrl,
+                            height: 140,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder:
+                                (_, __, ___) =>
+                                    Container(color: Colors.grey[300]),
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                height: 140,
+                                color: Colors.grey.shade300,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            },
+                          )
+                          : Container(
+                            height: 140,
+                            color: Colors.grey.shade300,
+                            child: const Center(child: Icon(Icons.image)),
+                          ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(fontSize: 12),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Category: $category',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        category,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _toggleSaved(id),
+                        child: Icon(
+                          isSaved ? Icons.favorite : Icons.favorite_border,
+                          color: isSaved ? Colors.red : Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

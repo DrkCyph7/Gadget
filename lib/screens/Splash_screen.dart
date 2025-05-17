@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gadgetzilla/screens/onboarding_screen.dart';
-import 'package:gadgetzilla/screens/home_screen.dart'; // Add HomeScreen import
+import 'package:gadgetzilla/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,78 +15,57 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    _navigateAfterDelay();
   }
 
-  // Check login status
-  _checkLoginStatus() async {
+  Future<void> _navigateAfterDelay() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-    // Navigate to the HomeScreen if logged in, else navigate to OnboardingScreen
-    Future.delayed(const Duration(seconds: 3), () {
-      if (isLoggedIn) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-        );
-      }
-    });
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                isLoggedIn ? const HomeScreen() : const OnboardingScreen(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background lines image
           Image.asset('assets/Element.png', fit: BoxFit.cover),
-
-          // Content
-          SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(), // Top spacer
-                // Logo in center
-                Padding(
-                  padding: const EdgeInsets.only(top: 200),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: 250,
-                        width: 250,
-                        child: Image.asset(
-                          'assets/GadgetZilla Logo.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Spacer(flex: 3),
+              Image.asset(
+                'assets/GadgetZilla Logo.png',
+                height: 200,
+                width: 200,
+              ),
+              const Spacer(flex: 2),
+              // Positioned in the middle of bottom half
+              Padding(
+                padding: EdgeInsets.only(bottom: screenHeight * 0.25),
+                child: LoadingAnimationWidget.fourRotatingDots(
+                  color: Colors.white,
+                  size: 50,
                 ),
-                // Bottom loading animation
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 30),
-                  child: SizedBox(
-                    height: 50,
-                    width: 50,
-                    child: Image.asset(
-                      'assets/Component.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+            ],
           ),
         ],
       ),

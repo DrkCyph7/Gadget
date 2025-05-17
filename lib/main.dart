@@ -3,11 +3,26 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gadgetzilla/screens/onboarding_screen.dart';
 import 'package:gadgetzilla/screens/home_screen.dart';
-import 'firebase_options.dart'; // Generated via `flutterfire configure`
+import 'package:gadgetzilla/screens/splash_screen.dart';
+import 'firebase_options.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() async {
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Local notifications initialization
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
   runApp(const MyApp());
 }
@@ -21,8 +36,33 @@ class MyApp extends StatelessWidget {
       title: 'GadgetZilla',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Poppins', primarySwatch: Colors.blue),
-      home: const AuthWrapper(),
+      home: const SplashDelayScreen(),
     );
+  }
+}
+
+class SplashDelayScreen extends StatefulWidget {
+  const SplashDelayScreen({super.key});
+
+  @override
+  State<SplashDelayScreen> createState() => _SplashDelayScreenState();
+}
+
+class _SplashDelayScreenState extends State<SplashDelayScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const SplashScreen();
   }
 }
 
@@ -34,19 +74,16 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show a loading spinner while checking auth status
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // If user is signed in, go to Home
         if (snapshot.hasData) {
           return const HomeScreen();
         }
 
-        // If not signed in, go to Onboarding
         return const OnboardingScreen();
       },
     );

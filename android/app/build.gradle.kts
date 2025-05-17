@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.gadget"
     compileSdk = 35
-    ndkVersion = "27.0.12077973" // Keep your NDK version
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.example.gadget"
@@ -21,6 +21,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -45,5 +46,6 @@ dependencies {
     // Firebase Auth
     implementation("com.google.firebase:firebase-auth")
 
-    // Add other Firebase dependencies as needed
+    // ✅ Desugaring library for Java 8+ APIs
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

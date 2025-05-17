@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class AddProductScreen extends StatefulWidget {
   @override
@@ -22,6 +23,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   File? _imageFile;
   bool isUploading = false;
 
+  final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
   final List<String> categories = [
     'Smart Tech',
     'Mobile Accessories',
@@ -31,6 +35,34 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'Travel Outdoors',
     'Trending & Viral',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeNotifications();
+  }
+
+  void _initializeNotifications() async {
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+    const initSettings = InitializationSettings(android: androidSettings);
+    await _localNotificationsPlugin.initialize(initSettings);
+  }
+
+  Future<void> _showLocalNotification(String title, String body) async {
+    const androidDetails = AndroidNotificationDetails(
+      'product_channel',
+      'Product Notifications',
+      channelDescription: 'Notifications for new products',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    await _localNotificationsPlugin.show(0, title, body, notificationDetails);
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -90,6 +122,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'ownerId': currentUser.uid,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      await _showLocalNotification(
+        'Product Listed',
+        '$name: ${description.length > 50 ? description.substring(0, 50) + '...' : description}',
+      );
 
       ScaffoldMessenger.of(
         context,
