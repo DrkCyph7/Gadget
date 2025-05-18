@@ -16,6 +16,19 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class CustomFABLocation extends FloatingActionButtonLocation {
+  final FloatingActionButtonLocation baseLocation;
+  final double offsetY;
+
+  CustomFABLocation({required this.baseLocation, this.offsetY = 0});
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final baseOffset = baseLocation.getOffset(scaffoldGeometry);
+    return Offset(baseOffset.dx, baseOffset.dy + offsetY);
+  }
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String _searchQuery = '';
@@ -333,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const MyListingsScreen(),
+                        builder: (context) => MyListingsScreen(),
                       ),
                     );
                   },
@@ -341,7 +354,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Icon(Icons.add, color: Colors.white),
                 )
                 : null,
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButtonLocation:
+            _currentIndex != 3
+                ? CustomFABLocation(
+                  baseLocation: FloatingActionButtonLocation.centerDocked,
+                  offsetY: 40,
+                )
+                : FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: Navbar(
           currentIndex: _currentIndex,
           onTabSelected: _onTabTapped,

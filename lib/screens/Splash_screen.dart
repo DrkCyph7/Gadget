@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
           Image.asset('assets/Element.png', fit: BoxFit.cover),
           Column(
             children: [
-              const Spacer(flex: 4), // slightly less space above
+              const Spacer(flex: 6),
               Center(
                 child: Image.asset(
                   'assets/GadgetZilla Logo.png',
@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   width: 200,
                 ),
               ),
-              const Spacer(flex: 3), // slightly more space below logo
+              const Spacer(flex: 1),
               Padding(
                 padding: const EdgeInsets.only(bottom: 40),
                 child: LoadingAnimationWidget.fourRotatingDots(

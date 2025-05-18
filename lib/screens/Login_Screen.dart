@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (userCredential.user != null) {
-        print("✅ Email login successful for: ${userCredential.user!.email}");
+        print("Email login successful for: ${userCredential.user!.email}");
         if (!mounted) return;
         ScaffoldMessenger.of(
           context,
@@ -70,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final userCredential = await _auth.signInWithCredential(credential);
 
       if (userCredential.user != null) {
-        print("✅ Google login successful: ${userCredential.user!.email}");
+        print("Google login successful: ${userCredential.user!.email}");
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Google login successful!')),

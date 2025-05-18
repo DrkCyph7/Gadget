@@ -26,17 +26,14 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
       );
 
-      // Optionally update display name
       await FirebaseAuth.instance.currentUser?.updateDisplayName(
         _fullNameController.text.trim(),
       );
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Account created! Please log in.")),
       );
 
-      // Navigate to login screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -54,7 +51,7 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      if (googleUser == null) return; // user cancelled
+      if (googleUser == null) return;
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -66,15 +63,13 @@ class _SignupScreenState extends State<SignupScreen> {
 
       await FirebaseAuth.instance.signInWithCredential(credential);
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Account created with Google! Please log in."),
         ),
       );
 
-      // Redirect to login
-      await FirebaseAuth.instance.signOut(); // Sign out to allow login later
+      await FirebaseAuth.instance.signOut();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),

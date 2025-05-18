@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import 'add_product_screen.dart';
 
 class MyListingsScreen extends StatefulWidget {
@@ -44,11 +43,13 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     String docId,
     String name,
     String description,
+    String url,
   ) async {
     try {
       await FirebaseFirestore.instance.collection('items').doc(docId).update({
         'name': name,
         'description': description,
+        'url': url,
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Product updated successfully')),
@@ -60,7 +61,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  void _confirmUpdate(String docId, String name, String description) {
+  void _confirmUpdate(
+    String docId,
+    String name,
+    String description,
+    String url,
+  ) {
     showDialog(
       context: context,
       builder:
@@ -77,7 +83,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _updateProduct(docId, name, description);
+                  _updateProduct(docId, name, description, url);
                 },
                 child: const Text('Update'),
               ),
@@ -123,8 +129,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                 onTogglePublish:
                     (val) => _togglePublish(docId, product['publish'] ?? true),
                 onSave:
-                    (name, description) =>
-                        _confirmUpdate(docId, name, description),
+                    (name, description, url) =>
+                        _confirmUpdate(docId, name, description, url),
               );
             },
           );
@@ -149,7 +155,7 @@ class EditableProductTile extends StatefulWidget {
   final Map<String, dynamic> product;
   final VoidCallback onDelete;
   final ValueChanged<bool> onTogglePublish;
-  final Function(String, String) onSave;
+  final Function(String, String, String) onSave;
 
   const EditableProductTile({
     super.key,
@@ -167,6 +173,7 @@ class EditableProductTile extends StatefulWidget {
 class _EditableProductTileState extends State<EditableProductTile> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
+  late TextEditingController _urlController;
   bool _hasChanges = false;
 
   @override
@@ -176,15 +183,18 @@ class _EditableProductTileState extends State<EditableProductTile> {
     _descriptionController = TextEditingController(
       text: widget.product['description'],
     );
+    _urlController = TextEditingController(text: widget.product['url'] ?? '');
 
     _nameController.addListener(_checkForChanges);
     _descriptionController.addListener(_checkForChanges);
+    _urlController.addListener(_checkForChanges);
   }
 
   void _checkForChanges() {
     final hasChanged =
         _nameController.text != (widget.product['name'] ?? '') ||
-        _descriptionController.text != (widget.product['description'] ?? '');
+        _descriptionController.text != (widget.product['description'] ?? '') ||
+        _urlController.text != (widget.product['url'] ?? '');
     if (hasChanged != _hasChanges) {
       setState(() {
         _hasChanges = hasChanged;
@@ -196,6 +206,7 @@ class _EditableProductTileState extends State<EditableProductTile> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _urlController.dispose();
     super.dispose();
   }
 
@@ -260,6 +271,14 @@ class _EditableProductTileState extends State<EditableProductTile> {
                     ),
                   ),
                   const SizedBox(height: 6),
+                  TextField(
+                    controller: _urlController,
+                    decoration: const InputDecoration(
+                      labelText: 'Product URL',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Text(
                     'Category: $category',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -292,6 +311,7 @@ class _EditableProductTileState extends State<EditableProductTile> {
                             () => widget.onSave(
                               _nameController.text.trim(),
                               _descriptionController.text.trim(),
+                              _urlController.text.trim(),
                             ),
                         child: const Text('Save'),
                       ),
